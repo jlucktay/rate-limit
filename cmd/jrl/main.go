@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/jlucktay/rate-limit/pkg/ratelimit"
 	log "github.com/sirupsen/logrus"
@@ -25,7 +27,7 @@ func okHandler(w http.ResponseWriter, r *http.Request) {
 
 func limit(next http.Handler) http.Handler {
 	log.Print("setting up Limiter...")
-	limiter := &ratelimit.Limiter{}
+	limiter := ratelimit.New(1*time.Minute, 3)
 	log.Print("Limiter setup complete!")
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
