@@ -1,10 +1,10 @@
 package main
 
 import (
-	"log"
 	"net/http"
 
 	"github.com/jlucktay/rate-limit/pkg/ratelimit"
+	log "github.com/sirupsen/logrus"
 )
 
 func main() {
@@ -18,16 +18,31 @@ func okHandler(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK) // 200
 	w.Header().Set("Content-Type", "text/plain")
 
-	if _, errWrite := w.Write([]byte("OK")); errWrite != nil {
+	if _, errWrite := w.Write([]byte("OK\n")); errWrite != nil {
 		log.Fatal(errWrite)
 	}
 }
 
 func limit(next http.Handler) http.Handler {
+	log.Print("setting up Limiter...")
 	limiter := &ratelimit.Limiter{}
+	log.Print("Limiter setup complete!")
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if !limiter.Allow() {
+		id := r.Header.Get("JRL-ID")
+		if id == "" {
+			http.Error(
+				w,
+				fmt.Sprintf(
+					"The 'JRL-ID' header was not specified on the request: %s",
+					http.StatusText(http.StatusBadRequest),
+				),
+				http.StatusBadRequest,
+			)
+			return
+		}
+
+		if !limiter.Allow(id) {
 			http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
 			return
 		}
