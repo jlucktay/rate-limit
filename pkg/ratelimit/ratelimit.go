@@ -28,8 +28,14 @@ type visitor struct {
 	sync.Mutex
 }
 
-// New constructs a new Limiter with the given configuration options.
-func New(d time.Duration, r uint) *Limiter {
+// New constructs a new Limiter with the given configuration options, optionally emitting more detailed logs (using the
+// logrus package) at the specified level.
+func New(d time.Duration, r uint, level ...log.Level) *Limiter {
+	if len(level) > 0 {
+		log.SetLevel(level[0])
+	}
+	log.WithField("func", "New()").Traceln()
+
 	l := &Limiter{
 		duration: d,
 		requests: r,
@@ -43,10 +49,11 @@ func New(d time.Duration, r uint) *Limiter {
 
 // Allow will check whether or not the given visitor is allowed to make any more requests right now.
 func (l *Limiter) Allow(visitor string) bool {
-	log.Printf("[Allow()] visitor ID: '%s'", visitor)
+	log.WithField("func", "Allow()").Traceln()
 
 	v := l.getVisitor(visitor)
-	log.Printf("[Allow()] visitor: '%#v'", v)
+
+	log.WithField("func", "Allow()").Debugf("v: '%+v'", v)
 
 	if v.countVisits() > l.requests {
 		// This visitor has hit their limit.
@@ -59,6 +66,8 @@ func (l *Limiter) Allow(visitor string) bool {
 // getVisitor checks for pre-existing visitors with the same ID, and either returns them directly, or calls a create
 // method accordingly. For visitors that have been here before, their visit count is incremented appropriately.
 func (l *Limiter) getVisitor(id string) *visitor {
+	log.WithField("func", "getVisitor()").Traceln()
+
 	l.Lock()
 
 	visitor, exists := l.visitors[id]
@@ -75,6 +84,8 @@ func (l *Limiter) getVisitor(id string) *visitor {
 
 // addVisitor will create a new visitor with one visit logged against a time windows based on right now.
 func (l *Limiter) addVisitor(id string) *visitor {
+	log.WithField("func", "addVisitor()").Traceln()
+
 	l.Lock()
 	defer l.Unlock()
 
@@ -90,6 +101,8 @@ func (l *Limiter) addVisitor(id string) *visitor {
 // visited will add the new visit, if the visitor hasn't already hit their limit. Here, the map is modified without
 // explicit lock/unlock calls, as the only calling function getVisitor has already done so.
 func (l *Limiter) visited(v *visitor) {
+	log.WithField("func", "visited()").Traceln()
+
 	// Add this visit to the appropriate time window.
 	if v.countVisits() <= l.requests {
 		w := timeWindow(time.Now())
@@ -99,8 +112,12 @@ func (l *Limiter) visited(v *visitor) {
 
 // prune removes old visits from before the Limiter's duration window.
 func (l *Limiter) prune(v *visitor) {
+	log.WithField("func", "prune()").Traceln()
+
 	// Capture current time window.
 	w := timeWindow(time.Now())
+
+	log.WithField("func", "prune()").Debugf("current window: %v", w)
 
 	// Express Limiter's duration in same terms.
 	d := durationWindow(l.duration)
@@ -120,13 +137,21 @@ func (l *Limiter) prune(v *visitor) {
 // at regular intervals, as well as the visitors themselves when they no longer have any visits within the duration
 // that the Limiter is keeping track of.
 func (l *Limiter) cleanupVisitors() {
+	log.WithField("func", "cleanupVisitors()").Traceln()
+
 	cleanupInterval := l.duration.Nanoseconds() / slidingWindowFactor
 
 	for {
 		time.Sleep(time.Duration(cleanupInterval) * time.Nanosecond)
 
+		if len(l.visitors) > 0 {
+			log.WithField("func", "cleanupVisitors()").Debugln("visitors:")
+		}
+
 		l.Lock()
 		for id, v := range l.visitors {
+			log.WithField("func", "cleanupVisitors()").Debugf("%s: %+v", id, v)
+
 			l.prune(v)
 
 			if v.countVisits() == 0 {
@@ -139,22 +164,29 @@ func (l *Limiter) cleanupVisitors() {
 
 // countVisits tallies up all tracked visits for the given visitor.
 func (v *visitor) countVisits() (total uint) {
+	log.WithField("func", "countVisits()").Traceln()
+
 	v.Lock()
 	defer v.Unlock()
 
 	for _, visitCount := range v.seen {
 		total += visitCount
 	}
+
+	log.WithField("func", "countVisits()").Debugf("total: %d", total)
+
 	return
 }
 
 // timeWindow divides timestamps by a constant factor to give us keys for tracking our sliding windows.
 func timeWindow(t time.Time) window {
+	log.WithField("func", "timeWindow()").Traceln()
 	return window(t.UnixNano() / 1e9 / slidingWindowFactor)
 }
 
 // durationWindows converts durations in the same manner as timeWindow() for instances where the two need to be
 // compared against each other.
 func durationWindow(d time.Duration) window {
+	log.WithField("func", "durationWindow()").Traceln()
 	return window(d.Nanoseconds() / 1e9 / slidingWindowFactor)
 }

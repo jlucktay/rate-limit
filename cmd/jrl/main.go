@@ -27,7 +27,7 @@ func okHandler(w http.ResponseWriter, r *http.Request) {
 
 func limit(next http.Handler) http.Handler {
 	log.Print("setting up Limiter...")
-	limiter := ratelimit.New(1*time.Minute, 3)
+	limiter := ratelimit.New(1*time.Minute, 3, log.TraceLevel)
 	log.Print("Limiter setup complete!")
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
