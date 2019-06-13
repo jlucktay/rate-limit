@@ -15,7 +15,7 @@ type Limiter struct {
 	requests uint
 	visitors map[string]*visitor
 
-	sync.Mutex
+	mtx sync.Mutex
 }
 
 type window int64
@@ -25,7 +25,7 @@ type window int64
 type visitor struct {
 	seen map[window]uint
 
-	sync.Mutex
+	mtx sync.Mutex
 }
 
 // New constructs a new Limiter with the given configuration options, optionally emitting more detailed logs (using the
@@ -68,16 +68,16 @@ func (l *Limiter) Allow(visitor string) bool {
 func (l *Limiter) getVisitor(id string) *visitor {
 	log.WithField("func", "getVisitor()").Traceln()
 
-	l.Lock()
+	l.mtx.Lock()
 
 	visitor, exists := l.visitors[id]
 	if !exists {
-		l.Unlock()
+		l.mtx.Unlock()
 		return l.addVisitor(id)
 	}
 
 	l.visited(visitor)
-	l.Unlock()
+	l.mtx.Unlock()
 
 	return visitor
 }
@@ -86,8 +86,8 @@ func (l *Limiter) getVisitor(id string) *visitor {
 func (l *Limiter) addVisitor(id string) *visitor {
 	log.WithField("func", "addVisitor()").Traceln()
 
-	l.Lock()
-	defer l.Unlock()
+	l.mtx.Lock()
+	defer l.mtx.Unlock()
 
 	l.visitors[id] = &visitor{
 		seen: map[window]uint{
@@ -122,8 +122,8 @@ func (l *Limiter) prune(v *visitor) {
 	// Express Limiter's duration in same terms.
 	d := durationWindow(l.duration)
 
-	v.Lock()
-	defer v.Unlock()
+	v.mtx.Lock()
+	defer v.mtx.Unlock()
 
 	for visitWindow := range v.seen {
 		// Roll off old time windows that are past the oldest one that we are concerned with.
@@ -148,7 +148,7 @@ func (l *Limiter) cleanupVisitors() {
 			log.WithField("func", "cleanupVisitors()").Debugln("visitors:")
 		}
 
-		l.Lock()
+		l.mtx.Lock()
 		for id, v := range l.visitors {
 			log.WithField("func", "cleanupVisitors()").Debugf("%s: %+v", id, v)
 
@@ -158,7 +158,7 @@ func (l *Limiter) cleanupVisitors() {
 				delete(l.visitors, id)
 			}
 		}
-		l.Unlock()
+		l.mtx.Unlock()
 	}
 }
 
@@ -166,8 +166,8 @@ func (l *Limiter) cleanupVisitors() {
 func (v *visitor) countVisits() (total uint) {
 	log.WithField("func", "countVisits()").Traceln()
 
-	v.Lock()
-	defer v.Unlock()
+	v.mtx.Lock()
+	defer v.mtx.Unlock()
 
 	for _, visitCount := range v.seen {
 		total += visitCount
