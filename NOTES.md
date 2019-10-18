@@ -9,6 +9,7 @@
     - I like this article a lot, because it dives into the theory and technical design and at the same time does not
     give away any implementation details, which strikes a good balance for my purposes
     - This article references [another][classdojo] which does detail some Node.js implementation, but nothing in Go
+  - [Scaling your API with rate limiters](https://stripe.com/au/blog/rate-limiters)
 - [This discussion][discussion] on the [golang-nuts group][group]
 
 ## Known issues
