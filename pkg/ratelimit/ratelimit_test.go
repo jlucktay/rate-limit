@@ -12,13 +12,38 @@ func TestAllow(t *testing.T) {
 	t.Parallel()
 
 	rl := ratelimit.New(1*time.Minute, 3)
-	i := is.New(t)
-	v := "visitor_id_1"
+	is := is.New(t)
+	v := t.Name()
 
-	i.True(rl.Allow(v))
-	i.True(rl.Allow(v))
-	i.True(rl.Allow(v))
-	i.True(!rl.Allow(v))
-	i.True(!rl.Allow(v))
-	i.True(!rl.Allow(v))
+	is.True(rl.Allow(v))
+	is.True(rl.Allow(v))
+	is.True(rl.Allow(v))
+	is.True(!rl.Allow(v))
+	is.True(!rl.Allow(v))
+	is.True(!rl.Allow(v))
+}
+
+func TestAllowOneMinute(t *testing.T) {
+	if testing.Short() {
+		t.Skipf("%s takes more than one minute to run", t.Name())
+	}
+
+	t.Parallel()
+
+	d := 1 * time.Minute
+	rl := ratelimit.New(d, 3)
+	is := is.New(t)
+	v := t.Name()
+
+	is.True(rl.Allow(v))
+	is.True(rl.Allow(v))
+	is.True(rl.Allow(v))
+	is.True(!rl.Allow(v))
+
+	time.Sleep(1 * d)
+
+	is.True(rl.Allow(v))
+	is.True(rl.Allow(v))
+	is.True(rl.Allow(v))
+	is.True(!rl.Allow(v))
 }
