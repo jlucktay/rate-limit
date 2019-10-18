@@ -4,6 +4,7 @@
 
 - The go repo wiki page on [Rate Limiting](https://github.com/golang/go/wiki/RateLimiting)
 - Blog posts:
+  - [How to Rate Limit HTTP Requests](https://www.alexedwards.net/blog/how-to-rate-limit-http-requests)
   - [An alternative approach to rate limiting][figma]
     - I like this article a lot, because it dives into the theory and technical design and at the same time does not
     give away any implementation details, which strikes a good balance for my purposes
